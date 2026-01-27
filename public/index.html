@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+<body>
+  <h2>Add word</h2>
+  <input id="de" placeholder="German">
+  <input id="en" placeholder="English">
+  <button onclick="add()">Add</button>
+
+  <h2>Quiz</h2>
+  <button onclick="quiz()">Start</button>
+  <div id="q"></div>
+
+<script>
+async function add() {
+  await fetch("/words", {
+    method: "POST",
+    body: JSON.stringify({
+      german: de.value,
+      english: en.value
+    })
+  })
+  de.value = en.value = ""
+}
+
+async function quiz() {
+  const r = await fetch("/quiz").then(r => r.json())
+  q.innerHTML = `<h3>${r.german}</h3>` +
+    r.options.map(o =>
+      `<button onclick="alert('${o === r.correct}')">${o}</button>`
+    ).join("<br>")
+}
+</script>
+</body>
+</html>
+
