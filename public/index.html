@@ -1,93 +1,284 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>German Quiz</title>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>German Quiz</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-
 <body class="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-100 flex items-center justify-center p-6">
-  <div class="w-full max-w-md bg-white rounded-2xl shadow-xl p-6 space-y-6">
-    <header class="text-center">
-      <h1 class="text-2xl font-bold text-indigo-600">German Vocab Trainer</h1>
-      <p class="text-sm text-gray-500">Learn a little every day</p>
-    </header>
 
-    <section class="space-y-3">
-      <h2 class="font-semibold text-gray-700">Add word</h2>
-      <input id="de" placeholder="German"
-        class="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-      <input id="en" placeholder="English"
-        class="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-      <button onclick="add()"
-        class="w-full bg-indigo-600 text-white rounded-lg py-2 font-medium hover:bg-indigo-700 transition">
+<button id="toggleBtn" onclick="toggleWords()"
+        class="fixed top-4 right-4 text-sm border border-stone-300 text-stone-600 bg-white px-3 py-1.5 rounded-lg hover:bg-stone-50 transition">
+  Show words
+</button>
+
+<div class="w-full max-w-md bg-white rounded-xl shadow-sm border border-stone-200 p-6 space-y-6">
+  <header class="text-center">
+    <h1 class="text-xl font-semibold text-stone-800">German Vocab Trainer</h1>
+    <p class="text-sm text-stone-400">Learn a little every day</p>
+  </header>
+
+  <!-- Add word -->
+  <section id="addSection" class="space-y-3">
+    <h2 class="text-sm font-medium text-stone-500">Add word</h2>
+    <input id="de" placeholder="German" oninput="checkAddBtn()"
+           class="w-full rounded-lg border border-stone-200 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-stone-400">
+    <input id="en" placeholder="English" oninput="checkAddBtn()"
+           class="w-full rounded-lg border border-stone-200 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-stone-400">
+    <div class="relative">
+      <button id="addBtn" onclick="add()" disabled
+              class="w-full bg-stone-800 text-white rounded-lg py-2 text-sm font-medium hover:bg-stone-700 transition disabled:bg-stone-200 disabled:text-stone-400 disabled:cursor-not-allowed">
         Add word
       </button>
-    </section>
+      <span id="addSuccess" class="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500 text-lg hidden">&#10003;</span>
+    </div>
+  </section>
 
-    <section class="space-y-3">
-      <h2 class="font-semibold text-gray-700">Quiz</h2>
-      <button onclick="quiz()"
-        class="w-full bg-purple-600 text-white rounded-lg py-2 font-medium hover:bg-purple-700 transition">
-        Start quiz
+  <!-- Quiz start -->
+  <section id="quizStartSection" class="space-y-3">
+    <h2 class="text-sm font-medium text-stone-500">Quiz</h2>
+    <button onclick="startQuiz()"
+            class="w-full border border-stone-300 text-stone-700 rounded-lg py-2 text-sm font-medium hover:bg-stone-50 transition">
+      Start quiz
+    </button>
+  </section>
+
+  <!-- Quiz active -->
+  <section id="quizActiveSection" class="space-y-4 hidden">
+    <div class="flex justify-between items-center">
+      <h2 class="text-sm font-medium text-stone-500">Quiz</h2>
+      <span id="quizProgress" class="text-sm text-stone-400"></span>
+    </div>
+    <div id="quizArea" class="space-y-3"></div>
+    <div id="quizButtons" class="flex gap-2">
+      <button id="nextBtn" onclick="nextQuestion()" disabled
+              class="flex-1 bg-stone-800 text-white rounded-lg py-2 text-sm font-medium hover:bg-stone-700 transition disabled:bg-stone-200 disabled:text-stone-400 disabled:cursor-not-allowed">
+        Next
       </button>
+      <button onclick="finishQuiz()"
+              class="flex-1 border border-stone-300 text-stone-600 rounded-lg py-2 text-sm font-medium hover:bg-stone-50 transition">
+        Finish
+      </button>
+    </div>
+  </section>
 
-      <div id="quiz" class="space-y-3"></div>
-    </section>
-  </div>
+  <!-- Word list (hidden by default) -->
+  <section id="wordSection" class="space-y-3 hidden">
+    <h2 class="text-sm font-medium text-stone-500">All words</h2>
+    <div id="allWords" class="space-y-2"></div>
+  </section>
+</div>
 
 <script>
-let correct = null
+  let correctAnswer = null
+  let totalWords = 0
+  let currentQuestion = 0
+  let correctCount = 0
 
-async function add() {
-  if (!de.value || !en.value) return
+  // Check if add button should be enabled
+  function checkAddBtn() {
+    const btn = document.getElementById('addBtn')
+    btn.disabled = !de.value.trim() || !en.value.trim()
+  }
 
-  await fetch("/words", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ german: de.value, english: en.value })
-  })
+  // Add word
+  async function add() {
+    const german = de.value.trim()
+    const english = en.value.trim()
+    if (!german || !english) return
 
-  de.value = ""
-  en.value = ""
-}
+    try {
+      const res = await fetch("/words", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ german, english })
+      })
+      if (!res.ok) throw new Error('Failed to add word')
 
-async function quiz() {
-  const r = await fetch("/quiz").then(r => r.json())
-  correct = r.correct
+      de.value = ""
+      en.value = ""
+      checkAddBtn()
+      refreshWordsIfVisible()
 
-  quiz.innerHTML = `
-    <div class="text-center text-3xl font-bold text-gray-800">
-      ${r.german}
-    </div>
+      // Show tick for 2 seconds
+      const tick = document.getElementById('addSuccess')
+      tick.classList.remove('hidden')
+      setTimeout(() => tick.classList.add('hidden'), 2000)
+    } catch (e) {
+      alert('Error adding word')
+    }
+  }
+
+  // Start quiz
+  async function startQuiz() {
+    // Get total word count
+    const words = await fetch("/words").then(res => res.json())
+    if (words.length < 4) {
+      alert('Add at least 4 words to start the quiz')
+      return
+    }
+    totalWords = words.length
+    currentQuestion = 0
+    correctCount = 0
+
+    // Hide add section and toggle button, show quiz
+    document.getElementById('addSection').classList.add('hidden')
+    document.getElementById('quizStartSection').classList.add('hidden')
+    document.getElementById('quizActiveSection').classList.remove('hidden')
+    document.getElementById('toggleBtn').classList.add('hidden')
+
+    loadQuestion()
+  }
+
+  // Load a question
+  async function loadQuestion() {
+    currentQuestion++
+    document.getElementById('quizProgress').textContent = `${currentQuestion} / ${totalWords}`
+    document.getElementById('nextBtn').disabled = true
+
+    const r = await fetch("/quiz").then(res => res.json())
+    correctAnswer = r.correct
+
+    quizArea.innerHTML = `
+    <div class="text-center text-2xl font-medium text-stone-800 py-2">${r.german}</div>
     <div class="grid gap-2">
       ${r.options.map(o => `
-        <button
-          onclick="answer(this, '${o}')"
-          class="rounded-lg border py-2 hover:bg-gray-100 transition">
-          ${o}
-        </button>
+        <button onclick="answer(this,'${o}')"
+          class="rounded-lg border border-stone-200 py-2 text-sm text-stone-600 hover:bg-stone-50 transition">${o}</button>
       `).join("")}
     </div>
   `
-}
-
-function answer(btn, value) {
-  document.querySelectorAll("#quiz button").forEach(b => b.disabled = true)
-
-  if (value === correct) {
-    btn.className = "rounded-lg py-2 bg-green-500 text-white font-semibold"
-  } else {
-    btn.className = "rounded-lg py-2 bg-red-500 text-white font-semibold"
-    document.querySelectorAll("#quiz button").forEach(b => {
-      if (b.textContent === correct) {
-        b.className = "rounded-lg py-2 bg-green-500 text-white font-semibold"
-      }
-    })
   }
-}
+
+  // Answer button
+  function answer(btn, value) {
+    document.querySelectorAll("#quizArea button").forEach(b => b.disabled = true)
+    if (value === correctAnswer) {
+      btn.className = "rounded-lg py-2 text-sm bg-emerald-50 text-emerald-700 border border-emerald-200"
+      correctCount++
+    } else {
+      btn.className = "rounded-lg py-2 text-sm bg-red-50 text-red-700 border border-red-200"
+      document.querySelectorAll("#quizArea button").forEach(b => {
+        if (b.textContent === correctAnswer) {
+          b.className = "rounded-lg py-2 text-sm bg-emerald-50 text-emerald-700 border border-emerald-200"
+        }
+      })
+    }
+    // Enable Next only if more questions remain
+    if (currentQuestion < totalWords) {
+      document.getElementById('nextBtn').disabled = false
+    }
+  }
+
+  // Next question
+  function nextQuestion() {
+    if (currentQuestion < totalWords) {
+      loadQuestion()
+    }
+  }
+
+  // Finish quiz
+  function finishQuiz() {
+    quizArea.innerHTML = `
+      <div class="text-center space-y-2 py-4">
+        <div class="text-lg font-medium text-stone-800">${correctCount} / ${currentQuestion} correct</div>
+        <p class="text-sm text-stone-400">${Math.round(correctCount / currentQuestion * 100)}% accuracy</p>
+      </div>
+    `
+    document.getElementById('quizButtons').innerHTML = `
+      <button onclick="exitQuiz()"
+              class="w-full bg-stone-800 text-white rounded-lg py-2 text-sm font-medium hover:bg-stone-700 transition">
+        Done
+      </button>
+    `
+    document.getElementById('quizProgress').textContent = 'Finished'
+  }
+
+  // Exit quiz
+  function exitQuiz() {
+    document.getElementById('addSection').classList.remove('hidden')
+    document.getElementById('quizStartSection').classList.remove('hidden')
+    document.getElementById('quizActiveSection').classList.add('hidden')
+    document.getElementById('toggleBtn').classList.remove('hidden')
+    quizArea.innerHTML = ''
+    // Restore buttons
+    document.getElementById('quizButtons').innerHTML = `
+      <button id="nextBtn" onclick="nextQuestion()" disabled
+              class="flex-1 bg-stone-800 text-white rounded-lg py-2 text-sm font-medium hover:bg-stone-700 transition disabled:bg-stone-200 disabled:text-stone-400 disabled:cursor-not-allowed">
+        Next
+      </button>
+      <button onclick="finishQuiz()"
+              class="flex-1 border border-stone-300 text-stone-600 rounded-lg py-2 text-sm font-medium hover:bg-stone-50 transition">
+        Finish
+      </button>
+    `
+  }
+
+  // Toggle word list visibility
+  async function toggleWords() {
+    const wordSection = document.getElementById('wordSection')
+    const addSection = document.getElementById('addSection')
+    const quizStartSection = document.getElementById('quizStartSection')
+    const quizActiveSection = document.getElementById('quizActiveSection')
+    const btn = document.getElementById('toggleBtn')
+    const showingWords = !wordSection.classList.contains('hidden')
+
+    if (showingWords) {
+      // Switch back to main view
+      wordSection.classList.add('hidden')
+      addSection.classList.remove('hidden')
+      quizStartSection.classList.remove('hidden')
+      quizActiveSection.classList.add('hidden')
+      quizArea.innerHTML = ''
+      btn.textContent = 'Show words'
+    } else {
+      // Switch to word list view
+      await loadWords()
+      wordSection.classList.remove('hidden')
+      addSection.classList.add('hidden')
+      quizStartSection.classList.add('hidden')
+      quizActiveSection.classList.add('hidden')
+      btn.textContent = 'Hide words'
+    }
+  }
+
+  // Load all words
+  async function loadWords() {
+    const res = await fetch("/words")
+    const words = await res.json()
+    if (words.length === 0) {
+      allWords.innerHTML = '<p class="text-stone-400 text-center text-sm">No words</p>'
+    } else {
+      allWords.innerHTML = words.map(w => `
+      <div class="flex justify-between items-center border border-stone-200 p-2 rounded-lg">
+        <span class="text-sm text-stone-700">${w.german} → ${w.english}</span>
+        <button onclick="delWord(${w.id})"
+          class="text-xs border border-stone-300 text-stone-500 px-2 py-1 rounded hover:border-red-300 hover:text-red-500 transition">Remove</button>
+      </div>
+    `).join("")
+    }
+  }
+
+  // Delete word
+  async function delWord(id) {
+    if (!confirm("Delete this word?")) return
+    await fetch("/words", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id })
+    })
+    loadWords()
+  }
+
+  // Refresh word list if visible
+  function refreshWordsIfVisible() {
+    const section = document.getElementById('wordSection')
+    if (!section.classList.contains('hidden')) {
+      loadWords()
+    }
+  }
 </script>
+
 </body>
 </html>
-
