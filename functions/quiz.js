@@ -7,10 +7,13 @@ export async function onRequestGet({ env }) {
   // Shuffle all words to randomize the quiz order
   const shuffled = allWords.results.sort(() => Math.random() - 0.5)
 
+  // Limit quiz to 15 questions
+  const quizWords = shuffled.slice(0, 15)
+
   // Build quiz questions with options
-  const questions = shuffled.map(word => {
+  const questions = quizWords.map(word => {
     // Get 3 other wrong answers (excluding the current word)
-    const otherWords = shuffled.filter(w => w.id !== word.id)
+    const otherWords = quizWords.filter(w => w.id !== word.id)
     const wrong = otherWords
       .sort(() => Math.random() - 0.5)
       .slice(0, 3)
