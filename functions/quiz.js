@@ -8,7 +8,7 @@ export async function onRequestGet({ env }) {
   const shuffled = allWords.results.sort(() => Math.random() - 0.5)
 
   // Build quiz questions with options
-  const questions = shuffled.map((word, index) => {
+  const questions = shuffled.map(word => {
     // Get 3 other wrong answers (excluding the current word)
     const otherWords = shuffled.filter(w => w.id !== word.id)
     const wrong = otherWords
