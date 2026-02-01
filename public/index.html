@@ -130,21 +130,18 @@
 
   // Start quiz
   async function startQuiz() {
-    // Get total word count
     const words = await fetch("/words").then(res => res.json())
     if (words.length < 4) {
       alert('Add at least 4 words to start the quiz')
       return
     }
 
-    // Load all quiz questions at once
     const quizData = await fetch("/quiz").then(res => res.json())
     quizQuestions = quizData.questions
     totalWords = quizQuestions.length
     currentQuestion = 0
     correctCount = 0
 
-    // Hide add section and toggle button, show quiz
     document.getElementById('addSection').classList.add('hidden')
     document.getElementById('quizStartSection').classList.add('hidden')
     document.getElementById('quizActiveSection').classList.remove('hidden')
@@ -186,7 +183,6 @@
         }
       })
     }
-    // Enable Next only if more questions remain
     if (currentQuestion < totalWords - 1) {
       document.getElementById('nextBtn').disabled = false
     }
