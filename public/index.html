@@ -79,6 +79,7 @@
   let totalWords = 0
   let currentQuestion = 0
   let correctCount = 0
+  let quizQuestions = []
 
   // Check if add button should be enabled
   function checkAddBtn() {
@@ -135,7 +136,11 @@
       alert('Add at least 4 words to start the quiz')
       return
     }
-    totalWords = words.length
+
+    // Load all quiz questions at once
+    const quizData = await fetch("/quiz").then(res => res.json())
+    quizQuestions = quizData.questions
+    totalWords = quizQuestions.length
     currentQuestion = 0
     correctCount = 0
 
@@ -150,11 +155,10 @@
 
   // Load a question
   async function loadQuestion() {
-    currentQuestion++
-    document.getElementById('quizProgress').textContent = `${currentQuestion} / ${totalWords}`
+    document.getElementById('quizProgress').textContent = `${currentQuestion + 1} / ${totalWords}`
     document.getElementById('nextBtn').disabled = true
 
-    const r = await fetch("/quiz").then(res => res.json())
+    const r = quizQuestions[currentQuestion]
     correctAnswer = r.correct
 
     quizArea.innerHTML = `
@@ -183,13 +187,14 @@
       })
     }
     // Enable Next only if more questions remain
-    if (currentQuestion < totalWords) {
+    if (currentQuestion < totalWords - 1) {
       document.getElementById('nextBtn').disabled = false
     }
   }
 
   // Next question
   function nextQuestion() {
+    currentQuestion++
     if (currentQuestion < totalWords) {
       loadQuestion()
     }
@@ -197,10 +202,11 @@
 
   // Finish quiz
   function finishQuiz() {
+    const questionsAnswered = currentQuestion + 1
     quizArea.innerHTML = `
       <div class="text-center space-y-2 py-4">
-        <div class="text-lg font-medium text-stone-800">${correctCount} / ${currentQuestion} correct</div>
-        <p class="text-sm text-stone-400">${Math.round(correctCount / currentQuestion * 100)}% accuracy</p>
+        <div class="text-lg font-medium text-stone-800">${correctCount} / ${questionsAnswered} correct</div>
+        <p class="text-sm text-stone-400">${Math.round(correctCount / questionsAnswered * 100)}% accuracy</p>
       </div>
     `
     document.getElementById('quizButtons').innerHTML = `
