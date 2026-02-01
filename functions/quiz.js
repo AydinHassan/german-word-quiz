@@ -1,21 +1,28 @@
 export async function onRequestGet({ env }) {
-  const correct = await env.DB.prepare(
-    "SELECT * FROM words ORDER BY RANDOM() LIMIT 1"
-  ).first()
+  const allWords = await env.DB.prepare(
+    "SELECT * FROM words"
+  ).all()
 
-  const wrong = await env.DB.prepare(
-    "SELECT english FROM words WHERE id != ? ORDER BY RANDOM() LIMIT 3"
-  ).bind(correct.id).all()
+  const shuffled = allWords.results.sort(() => Math.random() - 0.5)
 
-  const options = [
-    correct.english,
-    ...wrong.results.map(r => r.english)
-  ].sort(() => Math.random() - 0.5)
+  const quizWords = shuffled.slice(0, 15)
 
-  return Response.json({
-    german: correct.german,
-    correct: correct.english,
-    options
+  const questions = quizWords.map(word => {
+    const otherWords = quizWords.filter(w => w.id !== word.id)
+    const wrong = otherWords
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 3)
+      .map(w => w.english)
+
+    const options = [word.english, ...wrong].sort(() => Math.random() - 0.5)
+
+    return {
+      german: word.german,
+      correct: word.english,
+      options
+    }
   })
+
+  return Response.json({ questions })
 }
 
