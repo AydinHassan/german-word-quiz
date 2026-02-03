@@ -42,9 +42,13 @@
   <!-- Quiz start -->
   <section id="quizStartSection" class="space-y-3">
     <h2 class="text-sm font-medium text-stone-500">Quiz</h2>
-    <button onclick="startQuiz()"
-            class="w-full border border-stone-300 text-stone-700 rounded-lg py-2 text-sm font-medium hover:bg-stone-50 transition">
-      Start quiz
+    <button id="startQuizBtn" onclick="startQuiz()"
+            class="w-full border border-stone-300 text-stone-700 rounded-lg py-2 text-sm font-medium hover:bg-stone-50 transition disabled:bg-stone-200 disabled:text-stone-400 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+      <svg id="quizSpinner" class="hidden animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      <span id="startQuizBtnText">Start quiz</span>
     </button>
   </section>
 
@@ -130,17 +134,39 @@
 
   // Start quiz
   async function startQuiz() {
+    const btn = document.getElementById('startQuizBtn')
+    const spinner = document.getElementById('quizSpinner')
+    const btnText = document.getElementById('startQuizBtnText')
+
+    btn.disabled = true
+    spinner.classList.remove('hidden')
+    btnText.textContent = 'Loading...'
+
+    // Get total word count
     const words = await fetch("/words").then(res => res.json())
     if (words.length < 4) {
+      spinner.classList.add('hidden')
+      btnText.textContent = 'Start quiz'
       alert('Add at least 4 words to start the quiz')
       return
     }
 
-    const quizData = await fetch("/quiz").then(res => res.json())
-    quizQuestions = quizData.questions
-    totalWords = quizQuestions.length
-    currentQuestion = 0
-    correctCount = 0
+    try {
+      const quizData = await fetch("/quiz").then(res => res.json())
+
+      quizQuestions = quizData.questions
+      totalWords = quizQuestions.length
+      currentQuestion = 0
+      correctCount = 0
+    } catch (e) {
+      alert('Error starting quiz')
+    } finally {
+      // Reset button state
+      spinner.classList.add('hidden')
+      btnText.textContent = 'Start quiz'
+      btn.disabled = false
+      checkAddBtn()
+    }
 
     document.getElementById('addSection').classList.add('hidden')
     document.getElementById('quizStartSection').classList.add('hidden')
