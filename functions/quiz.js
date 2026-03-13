@@ -45,3 +45,22 @@ export async function onRequestGet({ env }) {
 
   return Response.json({ questions })
 }
+
+export async function onRequestPost({ request, env }) {
+  const { results } = await request.json()
+
+  if (!Array.isArray(results) || results.length === 0) {
+    return new Response("Missing results", { status: 400 })
+  }
+
+  const stmt = env.DB.prepare(
+    `UPDATE words SET
+       correct_count = correct_count + ?1,
+       total_count = total_count + 1
+     WHERE id = ?2`
+  )
+
+  await env.DB.batch(results.map(r => stmt.bind(r.correct ? 1 : 0, r.word_id)))
+
+  return Response.json({ ok: true })
+}

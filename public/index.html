@@ -80,6 +80,7 @@
   let currentQuestion = 0
   let correctCount = 0
   let quizQuestions = []
+  let quizResults = []
 
   // Check if add button should be enabled
   function checkAddBtn() {
@@ -141,6 +142,7 @@
     totalWords = quizQuestions.length
     currentQuestion = 0
     correctCount = 0
+    quizResults = []
 
     document.getElementById('addSection').classList.add('hidden')
     document.getElementById('quizStartSection').classList.add('hidden')
@@ -184,11 +186,7 @@
         }
       })
     }
-    fetch("/stats", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ word_id: quizQuestions[currentQuestion].word_id, correct: isCorrect })
-    })
+    quizResults.push({ word_id: quizQuestions[currentQuestion].word_id, correct: isCorrect })
     if (currentQuestion < totalWords - 1) {
       document.getElementById('nextBtn').disabled = false
     }
@@ -204,6 +202,11 @@
 
   // Finish quiz
   function finishQuiz() {
+    fetch("/quiz", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ results: quizResults })
+    })
     const questionsAnswered = currentQuestion + 1
     quizArea.innerHTML = `
       <div class="text-center space-y-2 py-4">
