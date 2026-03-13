@@ -172,7 +172,8 @@
   // Answer button
   function answer(btn, value) {
     document.querySelectorAll("#quizArea button").forEach(b => b.disabled = true)
-    if (value === correctAnswer) {
+    const isCorrect = value === correctAnswer
+    if (isCorrect) {
       btn.className = "rounded-lg py-2 text-sm bg-emerald-50 text-emerald-700 border border-emerald-200"
       correctCount++
     } else {
@@ -183,6 +184,11 @@
         }
       })
     }
+    fetch("/stats", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ word_id: quizQuestions[currentQuestion].word_id, correct: isCorrect })
+    })
     if (currentQuestion < totalWords - 1) {
       document.getElementById('nextBtn').disabled = false
     }
