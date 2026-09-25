@@ -82,6 +82,24 @@
   let quizQuestions = []
   let quizResults = []
 
+  async function adminFetch(url, options = {}) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      let token = localStorage.getItem('adminToken')
+      if (!token || attempt > 0) {
+        token = prompt('Admin token')
+        if (!token) throw new Error('No admin token')
+        localStorage.setItem('adminToken', token)
+      }
+      const res = await fetch(url, {
+        ...options,
+        headers: { ...options.headers, Authorization: `Bearer ${token}` }
+      })
+      if (res.status !== 401) return res
+      localStorage.removeItem('adminToken')
+    }
+    throw new Error('Unauthorized')
+  }
+
   // Check if add button should be enabled
   function checkAddBtn() {
     const btn = document.getElementById('addBtn')
@@ -104,7 +122,7 @@
     btnText.textContent = 'Adding...'
 
     try {
-      const res = await fetch("/words", {
+      const res = await adminFetch("/words", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ german, english })
@@ -160,15 +178,21 @@
     const r = quizQuestions[currentQuestion]
     correctAnswer = r.correct
 
-    quizArea.innerHTML = `
-    <div class="text-center text-2xl font-medium text-stone-800 py-2">${r.german}</div>
-    <div class="grid gap-2">
-      ${r.options.map(o => `
-        <button onclick="answer(this,'${o}')"
-          class="rounded-lg border border-stone-200 py-2 text-sm text-stone-600 hover:bg-stone-50 transition">${o}</button>
-      `).join("")}
-    </div>
-  `
+    const german = document.createElement('div')
+    german.className = 'text-center text-2xl font-medium text-stone-800 py-2'
+    german.textContent = r.german
+
+    const grid = document.createElement('div')
+    grid.className = 'grid gap-2'
+    for (const o of r.options) {
+      const btn = document.createElement('button')
+      btn.className = 'rounded-lg border border-stone-200 py-2 text-sm text-stone-600 hover:bg-stone-50 transition'
+      btn.textContent = o
+      btn.addEventListener('click', () => answer(btn, o))
+      grid.appendChild(btn)
+    }
+
+    quizArea.replaceChildren(german, grid)
   }
 
   // Answer button
@@ -202,11 +226,11 @@
 
   // Finish quiz
   function finishQuiz() {
-    fetch("/quiz", {
+    adminFetch("/quiz", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ results: quizResults })
-    })
+    }).catch(() => {})
     const questionsAnswered = currentQuestion + 1
     quizArea.innerHTML = `
       <div class="text-center space-y-2 py-4">
@@ -278,20 +302,29 @@
     if (words.length === 0) {
       allWords.innerHTML = '<p class="text-stone-400 text-center text-sm">No words</p>'
     } else {
-      allWords.innerHTML = words.map(w => `
-      <div class="flex justify-between items-center border border-stone-200 p-2 rounded-lg">
-        <span class="text-sm text-stone-700">${w.german} → ${w.english}</span>
-        <button onclick="delWord(${w.id})"
-          class="text-xs border border-stone-300 text-stone-500 px-2 py-1 rounded hover:border-red-300 hover:text-red-500 transition">Remove</button>
-      </div>
-    `).join("")
+      allWords.replaceChildren(...words.map(w => {
+        const row = document.createElement('div')
+        row.className = 'flex justify-between items-center border border-stone-200 p-2 rounded-lg'
+
+        const label = document.createElement('span')
+        label.className = 'text-sm text-stone-700'
+        label.textContent = `${w.german} → ${w.english}`
+
+        const btn = document.createElement('button')
+        btn.className = 'text-xs border border-stone-300 text-stone-500 px-2 py-1 rounded hover:border-red-300 hover:text-red-500 transition'
+        btn.textContent = 'Remove'
+        btn.addEventListener('click', () => delWord(w.id))
+
+        row.append(label, btn)
+        return row
+      }))
     }
   }
 
   // Delete word
   async function delWord(id) {
     if (!confirm("Delete this word?")) return
-    await fetch("/words", {
+    await adminFetch("/words", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id })
